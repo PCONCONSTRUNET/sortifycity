@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= landing.appName %> - Login e Cadastro</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="auth-pane auth-left">
+        <div class="auth-card-clean">
+          <div class="auth-logo-wrap">
+            <img src="/assets/sortify-city-logo.png" alt="Logo Sortify City" class="auth-logo-image" />
+          </div>
+
+          <h1 class="auth-title-main">Bem-vindo de volta</h1>
+          <p class="auth-sub-main">Acesse seu painel para gerenciar sorteios.</p>
+
+          <% if (flash) { %>
+            <div class="flash <%= flash.type %>"><%= flash.message %></div>
+          <% } %>
+
+          <div class="auth-switch">
+            <button type="button" class="tab-chip active" data-target="login">
+              Entrar
+            </button>
+            <button type="button" class="tab-chip" data-target="register">
+              Criar conta
+            </button>
+          </div>
+
+          <section class="tab-content active" id="login">
+            <form method="POST" action="/login" class="form-grid">
+              <label for="login-email">E-mail</label>
+              <input
+                id="login-email"
+                type="email"
+                name="email"
+                placeholder="seu@email.com"
+                required
+              />
+
+              <label for="login-password">Senha</label>
+              <input
+                id="login-password"
+                type="password"
+                name="password"
+                placeholder="********"
+                required
+              />
+
+              <button type="submit" class="primary-button">Entrar no Painel</button>
+            </form>
+            <p class="auth-foot">
+              Nao tem uma conta?
+              <button type="button" class="link-button" data-switch-target="register">
+                Crie agora
+              </button>
+            </p>
+          </section>
+
+          <section class="tab-content" id="register">
+            <form method="POST" action="/register" class="form-grid">
+              <label for="store_name">Nome da Loja</label>
+              <input id="store_name" type="text" name="store_name" required />
+
+              <label for="email">E-mail</label>
+              <input id="email" type="email" name="email" required />
+
+              <label for="cpf_cnpj">CPF ou CNPJ</label>
+              <input id="cpf_cnpj" type="text" name="cpf_cnpj" required />
+
+              <label for="whatsapp">WhatsApp</label>
+              <input id="whatsapp" type="text" name="whatsapp" required />
+
+              <label for="password">Senha</label>
+              <input id="password" type="password" name="password" minlength="6" required />
+
+              <button type="submit" class="primary-button">Criar conta</button>
+            </form>
+            <p class="auth-foot">
+              Ja tem conta?
+              <button type="button" class="link-button" data-switch-target="login">
+                Entrar
+              </button>
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="auth-pane auth-right">
+        <div class="hero-content">
+          <p class="hero-kicker"><%= landing.heroKicker %></p>
+          <h2><%= landing.heroTitle %></h2>
+          <p class="hero-text">
+            <%= landing.heroText %>
+          </p>
+
+          <div class="hero-cards">
+            <% landing.heroCards.forEach((card) => { %>
+              <article class="hero-mini-card">
+                <strong><%= card.title %></strong>
+                <span><%= card.text %></span>
+              </article>
+            <% }) %>
+          </div>
+
+          <div class="cities-wrap">
+            <p class="cities-title"><%= landing.citiesTitle %></p>
+            <div class="cities-list">
+              <% landing.cities.forEach((city) => { %>
+                <div class="city-badge">
+                  <span class="city-badge-media">
+                    <img src="<%= city.image_url %>" alt="Brasao de <%= city.city_name %>" />
+                  </span>
+                  <small><%= city.city_name %></small>
+                </div>
+              <% }) %>
+              <div class="city-badge">
+                <span class="city-badge-media city-badge-more"><%= landing.citiesMoreLabel %></span>
+                <small><%= landing.citiesMoreText %></small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/auth.js"></script>
+  </body>
+</html>

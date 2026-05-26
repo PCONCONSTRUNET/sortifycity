@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Sortify City</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body admin-login-body">
+    <main class="admin-login-shell">
+      <section class="admin-login-card">
+        <div class="auth-logo-wrap">
+          <img src="/assets/sortify-city-logo.png" alt="Logo Sortify City" class="auth-logo-image" />
+        </div>
+
+        <p class="admin-login-kicker">Area administrativa</p>
+        <h1>Controle geral</h1>
+        <p class="admin-login-sub">Acesso unico para financeiro, lojas e assinaturas.</p>
+
+        <% if (flash) { %>
+          <div class="flash <%= flash.type %>"><%= flash.message %></div>
+        <% } %>
+
+        <form method="POST" action="/admin/login" class="form-grid">
+          <label for="admin_password">Senha admin</label>
+          <input
+            id="admin_password"
+            type="password"
+            name="password"
+            placeholder="Senha administrativa"
+            required
+            autofocus
+          />
+
+          <button type="submit" class="primary-button">Entrar no Admin</button>
+        </form>
+
+        <a href="/" class="admin-login-back">Voltar ao login das lojas</a>
+      </section>
+    </main>
+  </body>
+</html>

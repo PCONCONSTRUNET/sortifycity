@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= raffle ? raffle.title : "Sorteio nao encontrado" %> - Sortify City</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="public-raffle-body">
+    <% if (!raffle) { %>
+      <main class="public-not-found">
+        <h1>Sorteio nao encontrado</h1>
+        <p>Esse link pode estar invalido ou o sorteio nao existe mais.</p>
+        <a href="/" class="primary-link">Ir para Sortify City</a>
+      </main>
+    <% } else { %>
+      <main class="public-raffle-main">
+        <section
+          class="public-raffle-hero"
+          style="background: linear-gradient(140deg, <%= raffle.brand_primary_color %> 0%, <%= raffle.brand_secondary_color %> 100%);"
+        >
+          <% const heroImageUrl = raffle.raffle_image_url || raffle.logo_url; %>
+          <% const heroIsLogoFallback = !raffle.raffle_image_url && raffle.logo_url; %>
+          <% if (heroImageUrl) { %>
+            <img
+              src="<%= heroImageUrl %>"
+              alt="<%= heroIsLogoFallback ? 'Logo da loja' : 'Foto do sorteio' %>"
+              class="public-raffle-cover <%= heroIsLogoFallback ? 'logo-fallback' : '' %>"
+            />
+          <% } %>
+          <p class="public-banner"><%= raffle.banner_text %></p>
+          <p class="public-store"><%= raffle.store_name %></p>
+          <h1><%= raffle.title %></h1>
+          <p class="public-prize">Premio: <strong><%= raffle.prize %></strong></p>
+          <p class="public-count">Participacoes registradas: <strong data-participants-count><%= entriesCount %></strong></p>
+
+          <% if (raffle.drawn_at) { %>
+            <div class="public-result">
+              <p>Sorteio finalizado.</p>
+              <p>Vencedor: <strong><%= raffle.winner_name %></strong></p>
+            </div>
+          <% } else if (alreadyJoinedOnDevice) { %>
+            <button type="button" class="public-open-modal is-disabled" disabled>
+              Voce ja esta inscrito
+            </button>
+            <p class="public-joined-note">Este dispositivo ja foi registrado neste sorteio.</p>
+          <% } else { %>
+            <button type="button" class="public-open-modal" id="open-entry-modal">
+              <%= raffle.button_text %>
+            </button>
+          <% } %>
+        </section>
+
+        <section class="public-raffle-info">
+          <h2>Como participar</h2>
+          <ol>
+            <li>Clique em <strong><%= raffle.button_text %></strong>.</li>
+            <li>Preencha Nome, CPF e WhatsApp.</li>
+            <li>Confirme e aguarde o resultado do sorteio.</li>
+          </ol>
+
+          <p class="public-rule">Regra: cada CPF pode participar apenas uma vez neste sorteio.</p>
+          <div class="public-privacy-box">
+            <h3>Privacidade dos participantes</h3>
+            <p>Os nomes dos participantes nao sao exibidos publicamente.</p>
+            <ul class="public-inline-stats">
+              <li>
+                <span>Participantes ativos</span>
+                <strong data-participants-count><%= entriesCount %></strong>
+              </li>
+              <li>
+                <span>Status do sorteio</span>
+                <strong><%= raffle.drawn_at ? "Finalizado" : "Em andamento" %></strong>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </main>
+
+      <% if (flash) { %>
+        <div class="public-floating-flash flash <%= flash.type %>"><%= flash.message %></div>
+      <% } %>
+
+      <% if (!raffle.drawn_at && !alreadyJoinedOnDevice) { %>
+        <div
+          class="public-modal-backdrop <%= flash && flash.type === 'error' ? '' : 'hidden' %>"
+          id="entry-modal-backdrop"
+        >
+          <section class="public-modal">
+            <button type="button" class="public-modal-close" id="close-entry-modal" aria-label="Fechar">
+              &times;
+            </button>
+
+            <div class="public-modal-head">
+              <% if (raffle.logo_url) { %>
+                <img src="<%= raffle.logo_url %>" alt="Logo da loja" class="public-modal-logo" />
+              <% } else { %>
+                <div class="public-modal-logo-placeholder"><%= raffle.store_name.slice(0, 2).toUpperCase() %></div>
+              <% } %>
+              <h2><%= raffle.public_modal_title %></h2>
+              <p><%= raffle.public_modal_subtitle %></p>
+            </div>
+
+            <form method="POST" action="/s/<%= raffle.public_token %>/participar" class="form-grid">
+              <label for="participant_name">Nome</label>
+              <input id="participant_name" type="text" name="participant_name" required />
+
+              <label for="participant_cpf">CPF</label>
+              <input
+                id="participant_cpf"
+                type="text"
+                name="participant_cpf"
+                placeholder="000.000.000-00"
+                inputmode="numeric"
+                maxlength="14"
+                required
+              />
+
+              <label for="participant_whatsapp">WhatsApp</label>
+              <input
+                id="participant_whatsapp"
+                type="text"
+                name="participant_whatsapp"
+                placeholder="(00) 90000-0000"
+                inputmode="tel"
+                maxlength="15"
+                required
+              />
+
+              <button
+                type="submit"
+                class="primary-button"
+                style="background: linear-gradient(90deg, <%= raffle.brand_primary_color %> 0%, <%= raffle.brand_secondary_color %> 100%);"
+              >
+                <%= raffle.button_text %>
+              </button>
+            </form>
+          </section>
+        </div>
+      <% } %>
+
+      <script src="/public-raffle.js"></script>
+    <% } %>
+  </body>
+</html>

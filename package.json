@@ -1,0 +1,31 @@
+{
+  "name": "sortify-city-saas",
+  "version": "1.0.0",
+  "description": "MVP de SaaS de sorteios para multiplas lojas",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate:supabase": "node src/migrate-sqlite-to-supabase.js"
+  },
+  "keywords": [
+    "saas",
+    "sorteio",
+    "multi-tenant"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-sqlite3": "^0.9.16",
+    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.1.1",
+    "pg": "^8.21.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}

@@ -4,6 +4,7 @@
   "description": "MVP de SaaS de sorteios para multiplas lojas",
   "main": "src/server.js",
   "scripts": {
+    "build": "echo \"No build step (Express app)\"",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "migrate:supabase": "node src/migrate-sqlite-to-supabase.js"

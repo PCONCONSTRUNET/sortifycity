@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel da Loja - Sortify City</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="dashboard-body">
+    <%
+      let pageTitle = "Dashboard";
+      let pageSubtitle = "Visao geral dos seus sorteios e engajamento.";
+      if (activeTab === "sorteios") {
+        pageTitle = "Sorteios";
+        pageSubtitle = "Crie e gerencie seus sorteios ativos.";
+      } else if (activeTab === "sorteados") {
+        pageTitle = "Sorteados";
+        pageSubtitle = "Historico completo de resultados e andamento.";
+      } else if (activeTab === "clientes") {
+        pageTitle = "Clientes";
+        pageSubtitle = "Clientes que participaram dos seus sorteios.";
+      } else if (activeTab === "plano") {
+        pageTitle = "Meu plano";
+        pageSubtitle = "Acompanhe seu plano ativo, fatura e vencimento.";
+      } else if (activeTab === "customizacao") {
+        pageTitle = "Customizacao";
+        pageSubtitle = "Personalize o modal publico da sua loja.";
+      } else if (activeTab === "configuracoes") {
+        pageTitle = "Configuracoes";
+        pageSubtitle = "Atualize dados da loja e seguranca da conta.";
+      }
+    %>
+
+    <div class="saas-shell">
+      <aside class="saas-sidebar">
+        <div class="saas-brand">
+          <img src="/assets/sortify-city-logo.png" alt="Logo Sortify City" class="saas-brand-logo" />
+        </div>
+
+        <p class="saas-menu-label">Menu</p>
+        <nav class="saas-menu">
+          <a href="/dashboard?tab=dashboard" class="saas-menu-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
+            Dashboard
+          </a>
+          <a href="/dashboard?tab=sorteios" class="saas-menu-item <%= activeTab === 'sorteios' ? 'active' : '' %>">
+            Sorteios
+          </a>
+          <a href="/dashboard?tab=sorteados" class="saas-menu-item <%= activeTab === 'sorteados' ? 'active' : '' %>">
+            Sorteados
+          </a>
+          <a href="/dashboard?tab=clientes" class="saas-menu-item <%= activeTab === 'clientes' ? 'active' : '' %>">
+            Clientes
+          </a>
+          <a href="/dashboard?tab=plano" class="saas-menu-item <%= activeTab === 'plano' ? 'active' : '' %>">
+            Meu plano
+          </a>
+          <a href="/dashboard?tab=customizacao" class="saas-menu-item <%= activeTab === 'customizacao' ? 'active' : '' %>">
+            Customizacao
+          </a>
+          <a href="/dashboard?tab=configuracoes" class="saas-menu-item <%= activeTab === 'configuracoes' ? 'active' : '' %>">
+            Configuracoes
+          </a>
+        </nav>
+
+        <div class="saas-sidebar-footer">
+          <p><strong><%= user.storeName %></strong></p>
+          <p><%= user.email %></p>
+          <form method="POST" action="/logout">
+            <button type="submit" class="saas-logout-button">Sair</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="saas-main">
+        <header class="saas-main-header">
+          <div>
+            <h1><%= pageTitle %></h1>
+            <p><%= pageSubtitle %></p>
+          </div>
+
+          <% if (activeTab === "dashboard" || activeTab === "sorteios") { %>
+            <button type="button" class="saas-create-button" id="open-create-raffle-modal">
+              + Criar Novo Sorteio
+            </button>
+          <% } %>
+        </header>
+
+        <% if (flash) { %>
+          <div class="flash <%= flash.type %>"><%= flash.message %></div>
+        <% } %>
+
+        <% if (activeTab === "dashboard") { %>
+          <section class="saas-kpi-grid">
+            <article class="saas-kpi-card">
+              <div class="saas-kpi-head">
+                <p>Sorteios Ativos</p>
+                <span class="saas-kpi-icon purple">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3V7M12 17V21M4.93 4.93L7.76 7.76M16.24 16.24L19.07 19.07M3 12H7M17 12H21M4.93 19.07L7.76 16.24M16.24 7.76L19.07 4.93" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                  </svg>
+                </span>
+              </div>
+              <strong><%= dashboardStats.activeRaffles %></strong>
+            </article>
+            <article class="saas-kpi-card">
+              <div class="saas-kpi-head">
+                <p>Total Sorteios</p>
+                <span class="saas-kpi-icon gray">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M5 5H19V19H5V5Z" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M9 5V19M15 5V19" stroke="currentColor" stroke-width="1.8" />
+                  </svg>
+                </span>
+              </div>
+              <strong><%= dashboardStats.totalRaffles %></strong>
+            </article>
+            <article class="saas-kpi-card">
+              <div class="saas-kpi-head">
+                <p>Total Participantes</p>
+                <span class="saas-kpi-icon blue">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M5 19C5 15.8 7.8 13.5 12 13.5C16.2 13.5 19 15.8 19 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                  </svg>
+                </span>
+              </div>
+              <strong><%= dashboardStats.totalParticipants %></strong>
+            </article>
+            <article class="saas-kpi-card">
+              <div class="saas-kpi-head">
+                <p>Vencedores Sorteados</p>
+                <span class="saas-kpi-icon amber">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M8 4H16V8C16 10.2 14.2 12 12 12C9.8 12 8 10.2 8 8V4Z" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M12 12V16M9 20H15M6 7H8M16 7H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                  </svg>
+                </span>
+              </div>
+              <strong><%= dashboardStats.drawnWinners %></strong>
+            </article>
+          </section>
+
+          <section class="saas-two-cols">
+            <article class="panel-card">
+              <div class="saas-card-head">
+                <h2>Sorteios Ativos Recentes</h2>
+                <a href="/dashboard?tab=sorteios">Ver todos</a>
+              </div>
+
+              <% if (!ongoingRaffles.length) { %>
+                <div class="saas-empty-state">
+                  <div class="saas-empty-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M5 7H19V17H5V7Z" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M10 7V17M14 7V17" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </div>
+                  <h3>Nenhum sorteio ativo</h3>
+                  <p>Crie seu primeiro sorteio para comecar a engajar seus clientes.</p>
+                  <button type="button" class="primary-link" data-open-create-modal>Criar Sorteio</button>
+                </div>
+              <% } else { %>
+                <div class="saas-active-list">
+                  <% ongoingRaffles.slice(0, 6).forEach((raffle) => { %>
+                    <div class="saas-active-item">
+                      <div class="saas-active-item-info">
+                        <strong><%= raffle.title %></strong>
+                        <p>Premio: <%= raffle.prize %></p>
+                        <p class="saas-public-link-line">
+                          Link publico:
+                          <a href="/s/<%= raffle.public_token %>" target="_blank" rel="noopener">
+                            <%= publicLinkBase %>/s/<%= raffle.public_token %>
+                          </a>
+                        </p>
+                      </div>
+                      <div class="saas-active-actions">
+                        <button
+                          type="button"
+                          class="copy-link-button"
+                          data-copy-url="<%= publicLinkBase %>/s/<%= raffle.public_token %>"
+                        >
+                          Copiar link
+                        </button>
+                        <a href="/s/<%= raffle.public_token %>" target="_blank" rel="noopener" class="saas-mini-link">
+                          Abrir publico
+                        </a>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              <% } %>
+            </article>
+
+            <article class="panel-card">
+              <h2>Atividade Recente</h2>
+              <% if (!recentActivity.length) { %>
+                <p class="saas-muted">Sem atividade recente.</p>
+              <% } else { %>
+                <ul class="saas-activity-list">
+                  <% recentActivity.forEach((activity, activityIndex) => { %>
+                    <% 
+                      const activityTitle = activity.raffleTitle || activity.label || `Sorteio #${activity.raffleId || "-"}`;
+                      const activityStatus = activity.status || "Atualizacao";
+                      const activitySummary = activity.summary || activity.label || "Atualizacao registrada.";
+                      const activityLatestAt = activity.latestAt || activity.at || "--";
+                    %>
+                    <li class="saas-activity-item">
+                      <div class="saas-activity-item-top">
+                        <strong><%= activityTitle %></strong>
+                        <span class="saas-activity-status <%= activityStatus === 'Finalizado' ? 'done' : 'running' %>">
+                          <%= activityStatus %>
+                        </span>
+                      </div>
+                      <p><%= activitySummary %></p>
+                      <div class="saas-activity-item-footer">
+                        <span><%= activityLatestAt %></span>
+                        <button
+                          type="button"
+                          class="saas-activity-details-button"
+                          data-open-activity-modal
+                          data-activity-id="<%= activity.raffleId %>"
+                          data-activity-index="<%= activityIndex %>"
+                        >
+                          Ver detalhes
+                        </button>
+                      </div>
+                    </li>
+                  <% }) %>
+                </ul>
+                <script id="recent-activity-data" type="application/json"><%- JSON.stringify(recentActivity) %></script>
+              <% } %>
+            </article>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "sorteios") { %>
+          <section class="panel-card">
+            <h2>Gerenciar Sorteios</h2>
+            <p>Nesta aba voce pode editar, excluir, sortear manualmente e copiar o link publico de cada sorteio.</p>
+
+            <% if (!raffles.length) { %>
+              <div class="saas-empty-state">
+                <h3>Nenhum sorteio criado</h3>
+                <p>Crie seu primeiro sorteio para comecar.</p>
+                <button type="button" class="primary-link" data-open-create-modal>Criar Sorteio</button>
+              </div>
+            <% } else { %>
+              <div class="raffles-manage-grid">
+                <% raffles.forEach((raffle) => { %>
+                  <% const endsAtInputValue = raffle.ends_at ? new Date(raffle.ends_at).toISOString().slice(0, 16) : ""; %>
+                  <article class="raffle-card raffle-manage-card">
+                    <div class="raffle-manage-row">
+                      <% if (raffle.raffle_image_url) { %>
+                        <img src="<%= raffle.raffle_image_url %>" alt="Imagem do sorteio" class="raffle-manage-cover" />
+                      <% } else { %>
+                        <div class="raffle-manage-cover raffle-manage-cover-placeholder">CS</div>
+                      <% } %>
+
+                      <div class="raffle-manage-content">
+                        <div class="raffle-header-row">
+                          <h3><%= raffle.title %></h3>
+                          <span class="status-pill <%= raffle.drawn_at ? 'done' : 'running' %>">
+                            <%= raffle.drawn_at ? "Finalizado" : "Em andamento" %>
+                          </span>
+                        </div>
+
+                        <div class="raffle-manage-meta">
+                          <span><strong>Premio:</strong> <%= raffle.prize %></span>
+                          <span><strong>Participacoes:</strong> <%= raffle.public_entries_count || 0 %></span>
+                          <% if (raffle.drawn_at) { %>
+                            <span class="winner"><strong>Vencedor:</strong> <%= raffle.winner_name %></span>
+                          <% } %>
+                        </div>
+
+                        <p class="public-link-row raffle-manage-link-row">
+                          <strong>Link publico:</strong>
+                          <a href="/s/<%= raffle.public_token %>" target="_blank" rel="noopener">
+                            <%= publicLinkBase %>/s/<%= raffle.public_token %>
+                          </a>
+                        </p>
+                      </div>
+
+                      <div class="raffle-manage-actions">
+                        <a href="/s/<%= raffle.public_token %>" target="_blank" rel="noopener" class="saas-mini-link">
+                          Abrir publico
+                        </a>
+                        <button
+                          type="button"
+                          class="copy-link-button"
+                          data-copy-url="<%= publicLinkBase %>/s/<%= raffle.public_token %>"
+                        >
+                          Copiar link
+                        </button>
+
+                        <% if (!raffle.drawn_at) { %>
+                          <form method="POST" action="/raffles/<%= raffle.id %>/draw">
+                            <input type="hidden" name="redirect_tab" value="sorteios" />
+                            <button type="submit" class="primary-button">Sortear</button>
+                          </form>
+                        <% } %>
+
+                        <form method="POST" action="/raffles/<%= raffle.id %>/delete" onsubmit="return confirm('Tem certeza que deseja excluir este sorteio?');">
+                          <input type="hidden" name="redirect_tab" value="sorteios" />
+                          <button type="submit" class="raffle-danger-button">Excluir</button>
+                        </form>
+                      </div>
+                    </div>
+
+                    <details class="raffle-edit-details">
+                      <summary>Editar sorteio</summary>
+                      <form method="POST" action="/raffles/<%= raffle.id %>/update" class="form-grid raffle-edit-form" enctype="multipart/form-data">
+                        <input type="hidden" name="redirect_tab" value="sorteios" />
+
+                        <label for="edit_title_<%= raffle.id %>">Titulo</label>
+                        <input id="edit_title_<%= raffle.id %>" type="text" name="title" value="<%= raffle.title %>" required />
+
+                        <label for="edit_prize_<%= raffle.id %>">Premio</label>
+                        <input id="edit_prize_<%= raffle.id %>" type="text" name="prize" value="<%= raffle.prize %>" required />
+
+                        <label for="edit_participants_<%= raffle.id %>">Participantes internos (1 por linha)</label>
+                        <textarea
+                          id="edit_participants_<%= raffle.id %>"
+                          name="participants"
+                          rows="5"
+                          placeholder="Maria&#10;Joao&#10;Carlos"
+                        ><%= raffle.participants || "" %></textarea>
+
+                        <label for="edit_ends_at_<%= raffle.id %>">Timer (data/hora de encerramento)</label>
+                        <input
+                          id="edit_ends_at_<%= raffle.id %>"
+                          type="datetime-local"
+                          name="ends_at"
+                          value="<%= endsAtInputValue %>"
+                        />
+
+                        <label class="checkbox-row" for="edit_auto_draw_on_end_<%= raffle.id %>">
+                          <input
+                            id="edit_auto_draw_on_end_<%= raffle.id %>"
+                            type="checkbox"
+                            name="auto_draw_on_end"
+                            <%= raffle.auto_draw_on_end ? "checked" : "" %>
+                          />
+                          Sortear automaticamente quando o timer encerrar
+                        </label>
+
+                        <label for="edit_raffle_image_file_<%= raffle.id %>">Nova foto do sorteio (opcional)</label>
+                        <input
+                          id="edit_raffle_image_file_<%= raffle.id %>"
+                          type="file"
+                          name="raffle_image_file"
+                          accept=".png,.jpg,.jpeg,.webp"
+                        />
+                        <% if (raffle.raffle_image_url) { %>
+                          <label class="checkbox-row" for="remove_raffle_image_<%= raffle.id %>">
+                            <input
+                              id="remove_raffle_image_<%= raffle.id %>"
+                              type="checkbox"
+                              name="remove_raffle_image"
+                              value="1"
+                            />
+                            Remover imagem atual
+                          </label>
+                        <% } %>
+
+                        <button type="submit" class="primary-button">Salvar edicao</button>
+                      </form>
+                    </details>
+                  </article>
+                <% }) %>
+              </div>
+            <% } %>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "sorteados") { %>
+          <section class="panel-card">
+            <h2>Sorteados (Historico Completo)</h2>
+            <p>Veja todos os sorteios, finalizados ou em andamento, e acompanhe os resultados.</p>
+
+            <% if (!raffles.length) { %>
+              <p>Nenhum sorteio criado ainda.</p>
+            <% } %>
+
+            <div class="raffles-grid">
+              <% raffles.forEach((raffle) => { %>
+                <% const participantsCount = (raffle.participants || "")
+                  .split(/\r?\n/)
+                  .map((name) => name.trim())
+                  .filter(Boolean).length; %>
+                <article class="raffle-card">
+                  <div class="raffle-header-row">
+                    <h3><%= raffle.title %></h3>
+                    <span class="status-pill <%= raffle.drawn_at ? 'done' : 'running' %>">
+                      <%= raffle.drawn_at ? "Finalizado" : "Em andamento" %>
+                    </span>
+                  </div>
+
+                  <div class="raffle-history-meta">
+                    <span><strong>Premio:</strong> <%= raffle.prize %></span>
+                    <span><strong>Internos:</strong> <%= participantsCount %></span>
+                    <span><strong>Publicas:</strong> <%= raffle.public_entries_count || 0 %></span>
+                    <span><strong>Criado:</strong> <%= raffle.created_at %></span>
+                    <% if (raffle.ends_at) { %>
+                      <span><strong>Timer:</strong> <span data-ends-at="<%= raffle.ends_at %>"><%= raffle.ends_at %></span></span>
+                    <% } else { %>
+                      <span><strong>Timer:</strong> Sem timer</span>
+                    <% } %>
+                  </div>
+
+                  <div class="raffle-history-actions">
+                    <a href="/s/<%= raffle.public_token %>" target="_blank" rel="noopener" class="saas-mini-link">
+                      Abrir publico
+                    </a>
+                    <button
+                      type="button"
+                      class="copy-link-button"
+                      data-copy-url="<%= publicLinkBase %>/s/<%= raffle.public_token %>"
+                    >
+                      Copiar link
+                    </button>
+                  </div>
+
+                  <% if (raffle.drawn_at) { %>
+                    <p class="winner"><strong>Resultado:</strong> <%= raffle.winner_name %></p>
+                    <p><strong>Sorteado em:</strong> <%= raffle.drawn_at %> (<%= raffle.draw_trigger || "manual" %>)</p>
+                  <% } else { %>
+                    <p><strong>Resultado:</strong> Aguardando sorteio.</p>
+                    <form method="POST" action="/raffles/<%= raffle.id %>/draw">
+                      <input type="hidden" name="redirect_tab" value="sorteados" />
+                      <button type="submit" class="primary-button">Sortear agora</button>
+                    </form>
+                  <% } %>
+                </article>
+              <% }) %>
+            </div>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "clientes") { %>
+          <section class="panel-card">
+            <div class="saas-card-head">
+              <h2>Clientes da Loja</h2>
+              <div class="clients-head-actions">
+                <span><%= clients.length %> cliente(s)</span>
+                <% if (clients.length && plan.canExportClients) { %>
+                  <a href="/dashboard/clientes/export.csv" class="clients-export-link">CSV</a>
+                  <a href="/dashboard/clientes/export.xls" class="clients-export-link">Excel</a>
+                <% } %>
+              </div>
+            </div>
+            <p>
+              Todo participante entra automaticamente nesta lista. Se o CPF ja existir, nao cria novo cadastro e a participacao no sorteio segue normal.
+            </p>
+            <% if (!plan.canExportClients) { %>
+              <p class="saas-muted">Exportacao de clientes disponivel no Plano LUCK.</p>
+            <% } %>
+
+            <% if (!clients.length) { %>
+              <p class="saas-muted">Nenhum cliente registrado ainda.</p>
+            <% } else { %>
+              <div class="clients-toolbar">
+                <label for="clients_search">Buscar cliente</label>
+                <input
+                  id="clients_search"
+                  type="search"
+                  placeholder="Nome, CPF ou WhatsApp"
+                  data-clients-search
+                  autocomplete="off"
+                />
+                <span data-clients-visible-count><%= clients.length %> resultado(s)</span>
+              </div>
+              <p class="saas-muted clients-empty-search hidden" data-clients-empty-search>
+                Nenhum cliente encontrado.
+              </p>
+
+              <div class="clients-table-wrap">
+                <table class="clients-table">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>CPF</th>
+                      <th>WhatsApp</th>
+                      <th>Total de participacoes</th>
+                      <th>Ultima participacao</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% clients.forEach((client, clientIndex) => { %>
+                      <tr
+                        class="client-alert-row client-alert-row-<%= (clientIndex % 4) + 1 %>"
+                        data-client-row
+                        data-open-client-details
+                        data-client-id="<%= client.id %>"
+                        data-client-search-text="<%= `${client.participant_name} ${client.participant_cpf} ${client.participant_whatsapp}` %>"
+                        tabindex="0"
+                      >
+                        <td>
+                          <span class="client-name-cell">
+                            <span><%= client.participant_name %></span>
+                          </span>
+                        </td>
+                        <td><%= client.participant_cpf %></td>
+                        <td><%= client.participant_whatsapp %></td>
+                        <td><%= client.total_entries %></td>
+                        <td><%= client.last_entry_at %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "plano") { %>
+          <section class="panel-card plan-panel">
+            <div class="plan-main-grid">
+              <article class="plan-hero-card">
+                <div>
+                  <span class="plan-eyebrow">Plano ativo</span>
+                  <h2><%= plan.plan_name %></h2>
+                  <p>O plano conectado a loja <strong><%= store.store_name %></strong>.</p>
+                </div>
+                <div class="plan-price-block">
+                  <strong><%= plan.monthly_price %></strong>
+                  <span>por mes</span>
+                </div>
+              </article>
+
+              <article class="plan-invoice-card">
+                <span class="plan-eyebrow">Fatura atual</span>
+                <div class="plan-invoice-head">
+                  <h3><%= plan.invoiceNumber %></h3>
+                  <span class="plan-status-pill"><%= plan.invoice_status %></span>
+                </div>
+                <p>Referencia <strong><%= plan.invoiceReference %></strong></p>
+                <p>Vencimento em <strong><%= plan.nextDueDate %></strong></p>
+              </article>
+            </div>
+
+            <div class="plan-detail-grid">
+              <article class="plan-detail-card purple">
+                <span>Status do plano</span>
+                <strong><%= plan.plan_status %></strong>
+                <p>Seu acesso permanece liberado enquanto o plano estiver ativo.</p>
+              </article>
+
+              <article class="plan-detail-card blue">
+                <span>Sorteios permitidos</span>
+                <strong><%= plan.raffleLimitLabel %></strong>
+                <p><%= plan.planDescription || "Seu limite acompanha o plano contratado." %></p>
+              </article>
+
+              <article class="plan-detail-card amber">
+                <span>Exportacao de clientes</span>
+                <strong><%= plan.canExportClients ? "Liberada" : "Bloqueada" %></strong>
+                <p>CSV e Excel ficam liberados para lojas no Plano LUCK.</p>
+              </article>
+            </div>
+
+            <div class="plan-note-card">
+              <div>
+                <strong>Resumo financeiro</strong>
+                <p>
+                  Fatura <%= plan.invoiceNumber %> no valor de <%= plan.monthly_price %>,
+                  status <%= plan.invoice_status %>, vencendo em <%= plan.nextDueDate %>.
+                </p>
+              </div>
+              <% if (plan.amountCents > 0 && plan.plan_name !== "Sem plano") { %>
+                <% if (pagbankConfigured) { %>
+                  <div class="plan-payment-actions">
+                    <button type="button" class="primary-button plan-pay-button" data-open-billing-pix>
+                      Pagar com Pix
+                    </button>
+                    <form method="POST" action="/dashboard/billing/pagbank/card" target="_blank" class="plan-card-form">
+                      <button type="submit" class="secondary-button plan-pay-button">
+                        Cartao no PagBank
+                      </button>
+                    </form>
+                  </div>
+                <% } else { %>
+                  <span class="plan-payment-warning">Pagamento online aguardando configuracao.</span>
+                <% } %>
+              <% } %>
+            </div>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "customizacao") { %>
+          <section class="panel-card">
+            <h2>Customizacao do Modal Publico</h2>
+            <p>Personalize o visual do modal publico de participacao com a marca da sua loja.</p>
+
+            <div class="custom-grid">
+              <form method="POST" action="/dashboard/customization" class="form-grid" enctype="multipart/form-data">
+                <label for="public_modal_title">Titulo do modal</label>
+                <input
+                  id="public_modal_title"
+                  type="text"
+                  name="public_modal_title"
+                  value="<%= customization.public_modal_title %>"
+                  required
+                />
+
+                <label for="public_modal_subtitle">Subtitulo</label>
+                <textarea
+                  id="public_modal_subtitle"
+                  name="public_modal_subtitle"
+                  rows="3"
+                  required
+                ><%= customization.public_modal_subtitle %></textarea>
+
+                <label for="button_text">Texto do botao</label>
+                <input
+                  id="button_text"
+                  type="text"
+                  name="button_text"
+                  value="<%= customization.button_text %>"
+                  required
+                />
+
+                <label for="banner_text">Texto da faixa</label>
+                <input
+                  id="banner_text"
+                  type="text"
+                  name="banner_text"
+                  value="<%= customization.banner_text %>"
+                />
+
+                <label for="logo_file">Upload da logo (opcional)</label>
+                <input id="logo_file" type="file" name="logo_file" accept=".png,.jpg,.jpeg,.webp,.svg" />
+                <p class="field-help">Formatos: PNG, JPG, WEBP ou SVG. Maximo 5MB.</p>
+                <% if (customization.logo_url) { %>
+                  <p class="field-help">Logo atual salva.</p>
+                  <label class="checkbox-row" for="remove_logo">
+                    <input id="remove_logo" type="checkbox" name="remove_logo" value="1" />
+                    Remover logo atual
+                  </label>
+                <% } %>
+
+                <div class="color-row">
+                  <div class="color-picker-field" data-color-picker>
+                    <label for="brand_primary_color">Cor primaria</label>
+                    <div class="color-picker-inputs">
+                      <input
+                        id="brand_primary_color_picker"
+                        type="color"
+                        value="<%= customization.brand_primary_color %>"
+                        data-color-native
+                        aria-label="Selecionar cor primaria"
+                      />
+                      <input
+                        id="brand_primary_color"
+                        type="text"
+                        name="brand_primary_color"
+                        placeholder="#6a3df0"
+                        value="<%= customization.brand_primary_color %>"
+                        maxlength="7"
+                        data-color-hex
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div class="color-picker-field" data-color-picker>
+                    <label for="brand_secondary_color">Cor secundaria</label>
+                    <div class="color-picker-inputs">
+                      <input
+                        id="brand_secondary_color_picker"
+                        type="color"
+                        value="<%= customization.brand_secondary_color %>"
+                        data-color-native
+                        aria-label="Selecionar cor secundaria"
+                      />
+                      <input
+                        id="brand_secondary_color"
+                        type="text"
+                        name="brand_secondary_color"
+                        placeholder="#3b14ba"
+                        value="<%= customization.brand_secondary_color %>"
+                        maxlength="7"
+                        data-color-hex
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p class="field-help">Clique no quadrado da cor para abrir a paleta.</p>
+
+                <button type="submit" class="primary-button">Salvar customizacao</button>
+              </form>
+
+              <aside class="modal-preview-wrap">
+                <h3>Preview do Modal</h3>
+                <div
+                  class="modal-preview"
+                  style="background: linear-gradient(140deg, <%= customization.brand_primary_color %> 0%, <%= customization.brand_secondary_color %> 100%);"
+                >
+                  <p class="preview-banner"><%= customization.banner_text %></p>
+                  <div class="preview-card">
+                    <% if (customization.logo_url) { %>
+                      <img src="<%= customization.logo_url %>" alt="Logo da loja" class="preview-logo" />
+                    <% } else { %>
+                      <div class="preview-logo-placeholder"><%= store.store_name.slice(0, 2).toUpperCase() %></div>
+                    <% } %>
+                    <h4><%= customization.public_modal_title %></h4>
+                    <p><%= customization.public_modal_subtitle %></p>
+                    <button type="button"><%= customization.button_text %></button>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "configuracoes") { %>
+          <section class="panel-card">
+            <h2>Configuracoes da Loja</h2>
+            <div class="settings-grid">
+              <article class="settings-card">
+                <h3>Dados da loja</h3>
+                <form method="POST" action="/dashboard/settings/profile" class="form-grid">
+                  <label for="cfg_store_name">Nome da loja</label>
+                  <input
+                    id="cfg_store_name"
+                    type="text"
+                    name="store_name"
+                    value="<%= store.store_name %>"
+                    required
+                  />
+
+                  <label for="cfg_email">Email</label>
+                  <input id="cfg_email" type="email" name="email" value="<%= store.email %>" required />
+
+                  <label for="cfg_cpf_cnpj">CPF ou CNPJ</label>
+                  <input
+                    id="cfg_cpf_cnpj"
+                    type="text"
+                    name="cpf_cnpj"
+                    value="<%= store.cpf_cnpj %>"
+                    required
+                  />
+
+                  <label for="cfg_whatsapp">WhatsApp</label>
+                  <input
+                    id="cfg_whatsapp"
+                    type="text"
+                    name="whatsapp"
+                    value="<%= store.whatsapp %>"
+                    required
+                  />
+
+                  <button type="submit" class="primary-button">Salvar dados</button>
+                </form>
+              </article>
+
+              <article class="settings-card">
+                <h3>Trocar senha</h3>
+                <form method="POST" action="/dashboard/settings/password" class="form-grid">
+                  <label for="current_password">Senha atual</label>
+                  <input id="current_password" type="password" name="current_password" required />
+
+                  <label for="new_password">Nova senha</label>
+                  <input id="new_password" type="password" name="new_password" minlength="6" required />
+
+                  <label for="confirm_new_password">Confirmar nova senha</label>
+                  <input
+                    id="confirm_new_password"
+                    type="password"
+                    name="confirm_new_password"
+                    minlength="6"
+                    required
+                  />
+
+                  <button type="submit" class="primary-button">Atualizar senha</button>
+                </form>
+              </article>
+            </div>
+          </section>
+        <% } %>
+
+        <% if (activeTab === "plano") { %>
+          <div class="saas-modal-backdrop hidden" id="billing-pix-modal">
+            <section class="saas-modal-card billing-pix-modal-card">
+              <button type="button" class="saas-modal-close" id="close-billing-pix-modal" aria-label="Fechar">
+                &times;
+              </button>
+
+              <div class="billing-pix-head">
+                <p class="plan-eyebrow">Pagamento Pix</p>
+                <h2>Finalize sua fatura</h2>
+                <p data-billing-pix-description>Gerando cobranca segura pelo PagBank.</p>
+              </div>
+
+              <div class="billing-pix-loading" data-billing-pix-loading>
+                <span></span>
+                <strong>Gerando Pix...</strong>
+              </div>
+
+              <div class="billing-pix-error hidden" data-billing-pix-error></div>
+
+              <div class="billing-pix-content hidden" data-billing-pix-content>
+                <div class="billing-pix-summary">
+                  <span>Valor</span>
+                  <strong data-billing-pix-amount>--</strong>
+                </div>
+
+                <div class="billing-pix-qr-wrap">
+                  <img src="" alt="QR Code Pix" class="billing-pix-qr hidden" data-billing-pix-qr />
+                  <div class="billing-pix-qr-placeholder" data-billing-pix-qr-placeholder>Pix copia e cola</div>
+                </div>
+
+                <label for="billing_pix_code">Codigo copia e cola</label>
+                <textarea id="billing_pix_code" rows="4" readonly data-billing-pix-code></textarea>
+
+                <div class="billing-pix-actions">
+                  <button type="button" class="primary-button" data-copy-billing-pix>
+                    Copiar codigo
+                  </button>
+                  <button type="button" class="secondary-button" data-refresh-billing-pix>
+                    Verificar status
+                  </button>
+                </div>
+
+                <p class="billing-pix-status" data-billing-pix-status>Aguardando pagamento.</p>
+              </div>
+            </section>
+          </div>
+        <% } %>
+
+        <% if (activeTab === "dashboard" || activeTab === "sorteios") { %>
+          <div class="saas-modal-backdrop hidden" id="create-raffle-modal">
+            <section class="saas-modal-card">
+              <button type="button" class="saas-modal-close" id="close-create-raffle-modal" aria-label="Fechar">
+                &times;
+              </button>
+              <h2>Criar Sorteio</h2>
+              <form method="POST" action="/raffles" class="form-grid" enctype="multipart/form-data">
+                <input type="hidden" name="redirect_tab" value="<%= activeTab === 'dashboard' ? 'dashboard' : 'sorteios' %>" />
+
+                <label for="modal_title">Titulo do sorteio</label>
+                <input id="modal_title" type="text" name="title" required />
+
+                <label for="modal_prize">O que vai ser sorteado</label>
+                <input id="modal_prize" type="text" name="prize" required />
+
+                <label for="modal_participants">Participantes internos (1 por linha)</label>
+                <textarea
+                  id="modal_participants"
+                  name="participants"
+                  rows="6"
+                  placeholder="Maria&#10;Joao&#10;Carlos"
+                ></textarea>
+
+                <label for="modal_raffle_image_file">Foto do sorteio (opcional)</label>
+                <input
+                  id="modal_raffle_image_file"
+                  type="file"
+                  name="raffle_image_file"
+                  accept=".png,.jpg,.jpeg,.webp"
+                />
+                <p class="field-help">Essa imagem aparece na pagina publica do sorteio. Maximo 8MB.</p>
+
+                <label for="modal_ends_at">Timer (data/hora de encerramento)</label>
+                <input id="modal_ends_at" type="datetime-local" name="ends_at" />
+
+                <label class="checkbox-row" for="modal_auto_draw_on_end">
+                  <input id="modal_auto_draw_on_end" type="checkbox" name="auto_draw_on_end" />
+                  Sortear automaticamente quando o timer encerrar
+                </label>
+
+                <button type="submit" class="primary-button">Criar sorteio</button>
+              </form>
+            </section>
+          </div>
+        <% } %>
+
+        <% if (activeTab === "sorteios" || activeTab === "sorteados") { %>
+          <div class="saas-modal-backdrop hidden" id="draw-raffle-modal">
+            <section class="saas-modal-card draw-modal-card">
+              <button type="button" class="saas-modal-close" id="close-draw-raffle-modal" aria-label="Fechar">
+                &times;
+              </button>
+              <div class="draw-confetti-layer" aria-hidden="true" data-draw-confetti></div>
+              <p class="draw-modal-eyebrow">Sorteio manual</p>
+              <h2 data-draw-modal-title>Preparando sorteio</h2>
+              <div class="draw-countdown" data-draw-countdown>5</div>
+              <p class="draw-modal-status" data-draw-modal-status>Segurando a ansiedade...</p>
+              <div class="draw-winner-box hidden" data-draw-winner-box>
+                <span>Vencedor</span>
+                <strong data-draw-winner-name></strong>
+              </div>
+            </section>
+          </div>
+        <% } %>
+
+        <% if (activeTab === "clientes") { %>
+          <div class="saas-modal-backdrop hidden" id="client-detail-modal">
+            <section class="saas-modal-card client-detail-modal-card">
+              <button type="button" class="saas-modal-close" id="close-client-detail-modal" aria-label="Fechar">
+                &times;
+              </button>
+
+              <div class="client-detail-head">
+                <div>
+                  <p class="client-detail-eyebrow">Cliente</p>
+                  <h2 data-client-detail-name>Detalhes do cliente</h2>
+                </div>
+                <span class="client-detail-pill" data-client-detail-total>0 participacoes</span>
+              </div>
+
+              <div class="client-detail-grid">
+                <div>
+                  <span>CPF</span>
+                  <strong data-client-detail-cpf>--</strong>
+                </div>
+                <div>
+                  <span>WhatsApp</span>
+                  <strong data-client-detail-whatsapp>--</strong>
+                </div>
+                <div>
+                  <span>Ultima participacao</span>
+                  <strong data-client-detail-last>--</strong>
+                </div>
+              </div>
+
+              <div class="client-detail-section">
+                <h3>Sorteios que participou</h3>
+                <div class="client-detail-list" data-client-participations-list></div>
+              </div>
+
+              <div class="client-detail-section">
+                <h3>Sorteios que ganhou</h3>
+                <div class="client-detail-list" data-client-wins-list></div>
+              </div>
+            </section>
+          </div>
+        <% } %>
+
+        <% if (activeTab === "dashboard" && recentActivity.length) { %>
+          <div class="saas-modal-backdrop hidden" id="activity-detail-modal">
+            <section class="saas-modal-card saas-activity-modal-card">
+              <button type="button" class="saas-modal-close" id="close-activity-detail-modal" aria-label="Fechar">
+                &times;
+              </button>
+              <h2 data-activity-modal-title>Detalhes da atividade</h2>
+              <p class="saas-muted" data-activity-modal-summary></p>
+              <ul class="saas-activity-modal-list" data-activity-modal-events></ul>
+            </section>
+          </div>
+        <% } %>
+      </main>
+    </div>
+
+    <script src="/dashboard.js"></script>
+  </body>
+</html>

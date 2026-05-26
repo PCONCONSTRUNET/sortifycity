@@ -39,24 +39,6 @@ npm start
 
 `http://localhost:3000`
 
-## Deploy (Render)
-
-Como este projeto é um servidor Node/Express (EJS), no Render você pode hospedar como **Web Service**.
-
-1. No Render, crie um **New → Web Service** conectando este repositório.
-2. Se o Render detectar o `render.yaml`, ele deve usar:
-   - `Build Command: npm install`
-   - `Start Command: npm start`
-   - `Health Check Path: /`
-3. Configure as variáveis de ambiente (recomendadas):
-   - `SESSION_SECRET`
-   - `ADMIN_PASSWORD`
-   - `PUBLIC_BASE_URL` (use a URL do seu serviço no Render)
-   - `DATABASE_URL` (opcional; se não usar, o app vai usar SQLite local)
-   - `PAGBANK_TOKEN` (se for usar pagamentos)
-
-Você pode copiar os valores base do arquivo `.env.example`.
-
 ## Observacoes
 
 - Banco SQLite local em `data.sqlite` por padrao.

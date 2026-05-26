@@ -8,15 +8,7 @@ const bcrypt = require("bcryptjs");
 const multer = require("multer");
 
 const { initDb, getDb } = require("./db");
-const {
-  createPagBankCheckout,
-  createPagBankPixOrder,
-  getPagBankOrder,
-  getPayLink,
-  getQrCodeLink,
-  getPagBankConfig,
-  isPagBankConfigured
-} = require("./pagbank");
+
 const { drawRaffle } = require("./raffleService");
 
 const PORT = process.env.PORT || 3000;
@@ -28,7 +20,7 @@ const ADMIN_PLAN_NAMES = ["Sem plano", "Plano Iniciante", "Plano LUCK"];
 const ADMIN_PLAN_KEYS = ["iniciante", "luck"];
 const ADMIN_PLAN_STATUSES = ["Ativo", "Pendente", "Suspenso", "Cancelado", "Teste"];
 const ADMIN_INVOICE_STATUSES = ["Sem cobranca", "Pendente", "Pago", "Vencida", "Cancelada"];
-const ADMIN_PAYMENT_METHODS = ["Nao configurado", "PagBank", "Pix", "Cartao", "Boleto", "Dinheiro", "Transferencia"];
+const ADMIN_PAYMENT_METHODS = ["Nao configurado", "Pix", "Cartao", "Boleto", "Dinheiro", "Transferencia"];
 const SESSION_DIR = process.env.VERCEL ? "/tmp" : path.join(__dirname, "..");
 const UPLOADS_DIR = process.env.VERCEL
   ? path.join("/tmp", "uploads")
@@ -538,53 +530,8 @@ function getPublicBaseUrl(req) {
   return String(process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
 }
 
-function buildPagBankReference(storeId) {
-  return `CS-${storeId}-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`.slice(0, 64);
-}
-
 function normalizeDigits(value) {
   return String(value || "").replace(/\D/g, "");
-}
-
-function normalizePhoneForPagBank(value) {
-  let digits = normalizeDigits(value);
-  if (digits.length > 11 && digits.startsWith("55")) {
-    digits = digits.slice(2);
-  }
-
-  if (digits.length < 10) {
-    return null;
-  }
-
-  return {
-    country: "55",
-    area: digits.slice(0, 2),
-    number: digits.slice(2, 11),
-    type: "MOBILE"
-  };
-}
-
-function buildPagBankCustomer(store) {
-  const taxId = normalizeDigits(store?.cpf_cnpj);
-  if (![11, 14].includes(taxId.length)) {
-    throw new Error("Atualize o CPF/CNPJ da loja antes de pagar com Pix.");
-  }
-
-  const customer = {
-    name: clampText(store.store_name, 100) || "Cliente CitySorteios",
-    email: clampText(store.email, 150),
-    tax_id: taxId
-  };
-  const phone = normalizePhoneForPagBank(store.whatsapp);
-  if (phone) {
-    customer.phones = [phone];
-  }
-
-  return customer;
-}
-
-function extractPagBankQrCode(order) {
-  return order?.qr_codes?.[0] || order?.qr_code?.[0] || null;
 }
 
 function buildPaymentResponse(payment) {
@@ -593,92 +540,8 @@ function buildPaymentResponse(payment) {
     status: payment.status,
     method: payment.method,
     amount: formatMoneyFromCents(payment.amount_cents),
-    description: payment.description,
-    pixCode: payment.pagbank_pix_code || "",
-    qrCodeImageUrl: payment.pagbank_qr_code_image_url || "",
-    expiresAt: payment.pagbank_expires_at || "",
-    paymentUrl: payment.pagbank_payment_url || ""
+    description: payment.description
   };
-}
-
-function normalizePagBankPaymentMethod(type) {
-  const normalizedType = String(type || "").toUpperCase();
-  if (normalizedType === "PIX") {
-    return "Pix";
-  }
-  if (normalizedType === "BOLETO") {
-    return "Boleto";
-  }
-  if (normalizedType.includes("CARD")) {
-    return "Cartao";
-  }
-  return "PagBank";
-}
-
-function mapPagBankStatus(status) {
-  const normalizedStatus = String(status || "").toUpperCase();
-  if (["PAID", "AUTHORIZED", "AVAILABLE"].includes(normalizedStatus)) {
-    return "Pago";
-  }
-  if (["CANCELED", "CANCELLED", "DECLINED", "FAILED"].includes(normalizedStatus)) {
-    return "Cancelada";
-  }
-  if (["OVERDUE", "EXPIRED"].includes(normalizedStatus)) {
-    return "Vencida";
-  }
-  return "Pendente";
-}
-
-function extractPagBankReference(payload) {
-  return (
-    payload?.reference_id ||
-    payload?.reference ||
-    payload?.metadata?.reference_id ||
-    payload?.charges?.[0]?.reference_id ||
-    payload?.charges?.[0]?.metadata?.reference_id ||
-    ""
-  );
-}
-
-function extractPagBankPaymentId(payload) {
-  return payload?.id || payload?.charges?.[0]?.id || payload?.payment?.id || "";
-}
-
-function extractPagBankOrderId(payload) {
-  const id = String(payload?.id || payload?.order?.id || "").trim();
-  return id.startsWith("ORDE_") ? id : "";
-}
-
-function extractPagBankStatus(payload) {
-  return payload?.charges?.[0]?.status || payload?.payment?.status || payload?.status || "";
-}
-
-function extractPagBankMethod(payload) {
-  return (
-    payload?.payment_method?.type ||
-    payload?.charges?.[0]?.payment_method?.type ||
-    payload?.payment?.payment_method?.type ||
-    ""
-  );
-}
-
-function verifyPagBankSignature(req) {
-  const signature = String(req.get("x-authenticity-token") || "").trim();
-  const token = getPagBankConfig().token;
-
-  if (!signature || !token || !req.rawBody) {
-    return false;
-  }
-
-  const expected = crypto
-    .createHash("sha256")
-    .update(`${token}-${req.rawBody}`)
-    .digest("hex");
-
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-
-  return signatureBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 }
 
 async function updateStorePlanAfterPayment(db, payment, method) {
@@ -703,56 +566,6 @@ async function updateStorePlanAfterPayment(db, payment, method) {
     `,
     [method, formatDateInput(nextDueDate), payment.store_id]
   );
-}
-
-async function applyPagBankPaymentUpdate(db, payment, payload) {
-  const rawStatus = extractPagBankStatus(payload);
-  const status = rawStatus ? mapPagBankStatus(rawStatus) : payment.status || "Pendente";
-  const methodRaw = extractPagBankMethod(payload);
-  const method = methodRaw ? normalizePagBankPaymentMethod(methodRaw) : payment.method || "PagBank";
-  const paymentId = extractPagBankPaymentId(payload);
-  const orderId = extractPagBankOrderId(payload);
-  const paidAt = status === "Pago" ? formatDateInput(todayAtNoon()) : payment.paid_at;
-
-  await db.run(
-    `
-      UPDATE admin_payments
-      SET status = ?,
-          method = ?,
-          paid_at = ?,
-          pagbank_payment_id = COALESCE(NULLIF(?, ''), pagbank_payment_id),
-          pagbank_order_id = COALESCE(NULLIF(?, ''), pagbank_order_id),
-          updated_at = datetime('now')
-      WHERE id = ?
-    `,
-    [status, method, paidAt || null, paymentId, orderId, payment.id]
-  );
-
-  if (status === "Pago") {
-    await updateStorePlanAfterPayment(db, payment, method);
-  }
-
-  return {
-    ...payment,
-    status,
-    method,
-    paid_at: paidAt || null,
-    pagbank_payment_id: paymentId || payment.pagbank_payment_id,
-    pagbank_order_id: orderId || payment.pagbank_order_id
-  };
-}
-
-async function refreshPagBankPayment(db, payment) {
-  if (!payment?.pagbank_order_id || !isPagBankConfigured()) {
-    return payment;
-  }
-
-  try {
-    const order = await getPagBankOrder(payment.pagbank_order_id);
-    return applyPagBankPaymentUpdate(db, payment, order);
-  } catch (_error) {
-    return payment;
-  }
 }
 
 function getMonthKey(date) {
@@ -1788,41 +1601,6 @@ app.post("/admin/payments/:paymentId/update", ensureAdminAuth, async (req, res) 
   return res.redirect(adminRedirect("financeiro"));
 });
 
-app.post("/webhooks/pagbank", async (req, res) => {
-  if (isPagBankConfigured() && req.get("x-authenticity-token") && !verifyPagBankSignature(req)) {
-    return res.status(401).json({ ok: false });
-  }
-
-  const payload = req.body || {};
-  const referenceId = extractPagBankReference(payload);
-  const paymentId = extractPagBankPaymentId(payload);
-  const orderId = extractPagBankOrderId(payload);
-  const db = getDb();
-
-  if (!referenceId && !paymentId && !orderId) {
-    return res.status(202).json({ ok: true, ignored: true });
-  }
-
-  const payment = await db.get(
-    `
-      SELECT *
-      FROM admin_payments
-      WHERE pagbank_reference_id = ?
-         OR pagbank_payment_id = ?
-         OR pagbank_order_id = ?
-      LIMIT 1
-    `,
-    [referenceId, paymentId, orderId]
-  );
-
-  if (!payment) {
-    return res.status(202).json({ ok: true, ignored: true });
-  }
-
-  await applyPagBankPaymentUpdate(db, payment, payload);
-
-  return res.json({ ok: true });
-});
 
 app.get("/", async (req, res) => {
   if (req.session.user) {
@@ -1958,16 +1736,6 @@ app.post("/logout", (req, res) => {
   return destroySessionAndRedirect(req, res, "/");
 });
 
-function handleBillingReturn(req, res) {
-  return res.redirect(dashboardRedirect("plano"));
-}
-
-app.get("/dashboard/billing/pagbank/return", ensureAuth, handleBillingReturn);
-app.post("/dashboard/billing/pagbank/return", ensureAuth, handleBillingReturn);
-
-app.post("/dashboard", ensureAuth, (req, res) => {
-  return res.redirect(dashboardRedirect(req.query.tab || req.body?.tab || "plano"));
-});
 
 app.get("/dashboard", ensureAuth, async (req, res) => {
   const db = getDb();
@@ -2089,312 +1857,7 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
     clients,
     customization,
     plan,
-    pagbankConfigured: isPagBankConfigured(),
     publicLinkBase
-  });
-});
-
-async function getBillingContext(req) {
-  const db = getDb();
-  const storeId = req.session.user.id;
-  const store = await db.get(
-    `
-      SELECT id, store_name, email, cpf_cnpj, whatsapp, created_at
-      FROM stores
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [storeId]
-  );
-
-  if (!store) {
-    return { db, store: null };
-  }
-
-  if (!isPagBankConfigured()) {
-    return {
-      db,
-      store,
-      error: "PagBank ainda nao esta configurado. Informe PAGBANK_TOKEN no .env."
-    };
-  }
-
-  const plan = await getStorePlan(db, store);
-  const amountCents = parseMoneyToCents(plan.monthly_price);
-
-  if (amountCents <= 0 || plan.plan_name === "Sem plano") {
-    return {
-      db,
-      store,
-      plan,
-      amountCents,
-      error: "Este plano nao possui mensalidade para pagamento online."
-    };
-  }
-
-  const dueDate = parseDateOnly(plan.invoice_due_at) || todayAtNoon();
-  const description = `${plan.plan_name} - ${plan.invoiceNumber}`;
-  const publicBaseUrl = getPublicBaseUrl(req);
-  const webhookUrl = `${publicBaseUrl}/webhooks/pagbank`;
-  const returnUrl = `${publicBaseUrl}/dashboard/billing/pagbank/return`;
-
-  return {
-    db,
-    store,
-    plan,
-    amountCents,
-    dueDate,
-    description,
-    webhookUrl,
-    returnUrl
-  };
-}
-
-async function createPendingBillingPayment(db, context, method, referenceId) {
-  return db.run(
-    `
-      INSERT INTO admin_payments (
-        store_id,
-        description,
-        amount_cents,
-        status,
-        method,
-        due_at,
-        reference_month,
-        pagbank_reference_id
-      )
-      VALUES (?, ?, ?, 'Pendente', ?, ?, ?, ?)
-    `,
-    [
-      context.store.id,
-      context.description,
-      context.amountCents,
-      method,
-      formatDateInput(context.dueDate),
-      getMonthKey(context.dueDate),
-      referenceId
-    ]
-  );
-}
-
-async function handlePagBankCardCheckout(req, res) {
-  const context = await getBillingContext(req);
-  if (!context.store) {
-    return destroySessionAndRedirect(req, res, "/");
-  }
-  if (context.error) {
-    setFlash(req, "error", context.error);
-    return res.redirect(dashboardRedirect("plano"));
-  }
-
-  const referenceId = buildPagBankReference(context.store.id);
-
-  const paymentResult = await createPendingBillingPayment(context.db, context, "Cartao", referenceId);
-
-  try {
-    const checkout = await createPagBankCheckout({
-      reference_id: referenceId,
-      customer_modifiable: true,
-      items: [
-        {
-          name: context.description.slice(0, 100),
-          quantity: 1,
-          unit_amount: context.amountCents
-        }
-      ],
-      payment_methods: [
-        { type: "CREDIT_CARD" }
-      ],
-      redirect_url: context.returnUrl,
-      return_url: context.returnUrl,
-      notification_urls: [context.webhookUrl],
-      payment_notification_urls: [context.webhookUrl],
-      soft_descriptor: "CITYSORTEIOS"
-    });
-    const payLink = getPayLink(checkout);
-
-    await context.db.run(
-      `
-        UPDATE admin_payments
-        SET pagbank_checkout_id = ?, pagbank_payment_url = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `,
-      [checkout.id || "", payLink, paymentResult.lastID]
-    );
-
-    if (!payLink) {
-      throw new Error("PagBank nao retornou o link de pagamento.");
-    }
-
-    return res.redirect(payLink);
-  } catch (error) {
-    await context.db.run(
-      `
-        UPDATE admin_payments
-        SET status = 'Cancelada', updated_at = datetime('now')
-        WHERE id = ?
-      `,
-      [paymentResult.lastID]
-    );
-
-    setFlash(req, "error", `Nao foi possivel criar o checkout PagBank: ${error.message}`);
-    return res.redirect(dashboardRedirect("plano"));
-  }
-}
-
-app.post("/dashboard/billing/pagbank/checkout", ensureAuth, handlePagBankCardCheckout);
-app.post("/dashboard/billing/pagbank/card", ensureAuth, handlePagBankCardCheckout);
-
-app.post("/dashboard/billing/pagbank/pix", ensureAuth, async (req, res) => {
-  const context = await getBillingContext(req);
-  if (!context.store) {
-    clearSessionCookie(res);
-    if (req.session) {
-      req.session.destroy(() => {});
-    }
-    return res.status(401).json({ ok: false, message: "Sessao expirada." });
-  }
-  if (context.error) {
-    return res.status(400).json({ ok: false, message: context.error });
-  }
-
-  let customer;
-  try {
-    customer = buildPagBankCustomer(context.store);
-  } catch (error) {
-    return res.status(400).json({ ok: false, message: error.message });
-  }
-
-  const reusablePayment = await context.db.get(
-    `
-      SELECT *
-      FROM admin_payments
-      WHERE store_id = ?
-        AND status = 'Pendente'
-        AND method = 'Pix'
-        AND reference_month = ?
-        AND amount_cents = ?
-        AND pagbank_pix_code IS NOT NULL
-        AND (pagbank_expires_at IS NULL OR pagbank_expires_at > ?)
-      ORDER BY id DESC
-      LIMIT 1
-    `,
-    [context.store.id, getMonthKey(context.dueDate), context.amountCents, new Date().toISOString()]
-  );
-
-  if (reusablePayment) {
-    return res.json({
-      ok: true,
-      payment: buildPaymentResponse(reusablePayment)
-    });
-  }
-
-  const referenceId = buildPagBankReference(context.store.id);
-  const paymentResult = await createPendingBillingPayment(context.db, context, "Pix", referenceId);
-  const expiresAt = addHours(new Date(), Number(process.env.PAGBANK_PIX_EXPIRES_HOURS || 24));
-
-  try {
-    const order = await createPagBankPixOrder(
-      {
-        reference_id: referenceId,
-        customer,
-        items: [
-          {
-            name: context.description.slice(0, 100),
-            quantity: 1,
-            unit_amount: context.amountCents
-          }
-        ],
-        qr_codes: [
-          {
-            amount: {
-              value: context.amountCents
-            },
-            expiration_date: expiresAt.toISOString()
-          }
-        ],
-        notification_urls: [context.webhookUrl]
-      },
-      referenceId
-    );
-    const qrCode = extractPagBankQrCode(order);
-    const pixCode = qrCode?.text || "";
-    const qrCodeImageUrl = getQrCodeLink(qrCode, "QRCODE.PNG");
-
-    if (!pixCode) {
-      throw new Error("PagBank nao retornou o codigo copia e cola do Pix.");
-    }
-
-    await context.db.run(
-      `
-        UPDATE admin_payments
-        SET pagbank_order_id = ?,
-            pagbank_qr_code_id = ?,
-            pagbank_pix_code = ?,
-            pagbank_qr_code_image_url = ?,
-            pagbank_expires_at = ?,
-            updated_at = datetime('now')
-        WHERE id = ?
-      `,
-      [
-        order.id || "",
-        qrCode?.id || "",
-        pixCode,
-        qrCodeImageUrl,
-        qrCode?.expiration_date || expiresAt.toISOString(),
-        paymentResult.lastID
-      ]
-    );
-
-    const payment = await context.db.get("SELECT * FROM admin_payments WHERE id = ?", [paymentResult.lastID]);
-    return res.json({
-      ok: true,
-      payment: buildPaymentResponse(payment)
-    });
-  } catch (error) {
-    await context.db.run(
-      `
-        UPDATE admin_payments
-        SET status = 'Cancelada', updated_at = datetime('now')
-        WHERE id = ?
-      `,
-      [paymentResult.lastID]
-    );
-
-    return res.status(502).json({
-      ok: false,
-      message: `Nao foi possivel gerar o Pix PagBank: ${error.message}`
-    });
-  }
-});
-
-app.get("/dashboard/billing/pagbank/payments/:paymentId", ensureAuth, async (req, res) => {
-  const paymentId = Number(req.params.paymentId);
-  if (!Number.isFinite(paymentId)) {
-    return res.status(400).json({ ok: false, message: "Pagamento invalido." });
-  }
-
-  const db = getDb();
-  const payment = await db.get(
-    `
-      SELECT *
-      FROM admin_payments
-      WHERE id = ? AND store_id = ?
-      LIMIT 1
-    `,
-    [paymentId, req.session.user.id]
-  );
-
-  if (!payment) {
-    return res.status(404).json({ ok: false, message: "Pagamento nao encontrado." });
-  }
-
-  await refreshPagBankPayment(db, payment);
-  const updatedPayment = await db.get("SELECT * FROM admin_payments WHERE id = ?", [payment.id]);
-
-  return res.json({
-    ok: true,
-    payment: buildPaymentResponse(updatedPayment || payment)
   });
 });
 

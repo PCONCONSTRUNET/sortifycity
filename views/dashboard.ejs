@@ -567,20 +567,7 @@
                 </p>
               </div>
               <% if (plan.amountCents > 0 && plan.plan_name !== "Sem plano") { %>
-                <% if (pagbankConfigured) { %>
-                  <div class="plan-payment-actions">
-                    <button type="button" class="primary-button plan-pay-button" data-open-billing-pix>
-                      Pagar com Pix
-                    </button>
-                    <form method="POST" action="/dashboard/billing/pagbank/card" target="_blank" class="plan-card-form">
-                      <button type="submit" class="secondary-button plan-pay-button">
-                        Cartao no PagBank
-                      </button>
-                    </form>
-                  </div>
-                <% } else { %>
-                  <span class="plan-payment-warning">Pagamento online aguardando configuracao.</span>
-                <% } %>
+                <span class="plan-payment-warning">Pagamentos online est&atilde;o desativados no momento.</span>
               <% } %>
             </div>
           </section>
@@ -779,52 +766,7 @@
         <% } %>
 
         <% if (activeTab === "plano") { %>
-          <div class="saas-modal-backdrop hidden" id="billing-pix-modal">
-            <section class="saas-modal-card billing-pix-modal-card">
-              <button type="button" class="saas-modal-close" id="close-billing-pix-modal" aria-label="Fechar">
-                &times;
-              </button>
-
-              <div class="billing-pix-head">
-                <p class="plan-eyebrow">Pagamento Pix</p>
-                <h2>Finalize sua fatura</h2>
-                <p data-billing-pix-description>Gerando cobranca segura pelo PagBank.</p>
-              </div>
-
-              <div class="billing-pix-loading" data-billing-pix-loading>
-                <span></span>
-                <strong>Gerando Pix...</strong>
-              </div>
-
-              <div class="billing-pix-error hidden" data-billing-pix-error></div>
-
-              <div class="billing-pix-content hidden" data-billing-pix-content>
-                <div class="billing-pix-summary">
-                  <span>Valor</span>
-                  <strong data-billing-pix-amount>--</strong>
-                </div>
-
-                <div class="billing-pix-qr-wrap">
-                  <img src="" alt="QR Code Pix" class="billing-pix-qr hidden" data-billing-pix-qr />
-                  <div class="billing-pix-qr-placeholder" data-billing-pix-qr-placeholder>Pix copia e cola</div>
-                </div>
-
-                <label for="billing_pix_code">Codigo copia e cola</label>
-                <textarea id="billing_pix_code" rows="4" readonly data-billing-pix-code></textarea>
-
-                <div class="billing-pix-actions">
-                  <button type="button" class="primary-button" data-copy-billing-pix>
-                    Copiar codigo
-                  </button>
-                  <button type="button" class="secondary-button" data-refresh-billing-pix>
-                    Verificar status
-                  </button>
-                </div>
-
-                <p class="billing-pix-status" data-billing-pix-status>Aguardando pagamento.</p>
-              </div>
-            </section>
-          </div>
+          
         <% } %>
 
         <% if (activeTab === "dashboard" || activeTab === "sorteios") { %>

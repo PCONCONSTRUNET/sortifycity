@@ -207,7 +207,10 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 8
+      maxAge: 1000 * 60 * 60 * 8,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: Boolean(process.env.VERCEL)
     }
   })
 );

@@ -198,6 +198,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/uploads", express.static(UPLOADS_DIR));
 
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  next();
+});
+
 app.use(
   session({
     store: createSessionStore(),
@@ -1611,7 +1616,7 @@ app.get("/", async (req, res) => {
       return destroySessionAndRedirect(req, res, "/");
     }
 
-    return res.redirect("/dashboard");
+    return res.redirect("/dashboard?_t=" + Date.now());
   }
 
   const db = getDb();
@@ -1688,7 +1693,7 @@ async function handleRegister(req, res) {
   await getStoreCustomization(db, result.lastID);
 
   setFlash(req, "success", "Cadastro realizado com sucesso.");
-  return req.session.save(() => res.redirect("/dashboard"));
+  return req.session.save(() => res.redirect("/dashboard?_t=" + Date.now()));
 }
 
 app.post("/register", handleRegister);
@@ -1727,7 +1732,7 @@ async function handleLogin(req, res) {
   await getStoreCustomization(db, store.id);
 
   setFlash(req, "success", "Login realizado com sucesso.");
-  return req.session.save(() => res.redirect("/dashboard"));
+  return req.session.save(() => res.redirect("/dashboard?_t=" + Date.now()));
 }
 
 app.post("/login", handleLogin);

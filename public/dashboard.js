@@ -1,6 +1,5 @@
 let dashboardIsNavigating = false;
 let dashboardTimerInterval = null;
-let billingPixStatusInterval = null;
 
 function formatDateForDisplay(date) {
   return date.toLocaleString("pt-BR");
@@ -74,30 +73,6 @@ function getClientDetailModal() {
   return document.getElementById("client-detail-modal");
 }
 
-function getBillingPixModal() {
-  return document.getElementById("billing-pix-modal");
-}
-
-function getBillingPixElements() {
-  const modal = getBillingPixModal();
-  if (!modal) {
-    return null;
-  }
-
-  return {
-    modal,
-    description: modal.querySelector("[data-billing-pix-description]"),
-    loading: modal.querySelector("[data-billing-pix-loading]"),
-    error: modal.querySelector("[data-billing-pix-error]"),
-    content: modal.querySelector("[data-billing-pix-content]"),
-    amount: modal.querySelector("[data-billing-pix-amount]"),
-    qrImage: modal.querySelector("[data-billing-pix-qr]"),
-    qrPlaceholder: modal.querySelector("[data-billing-pix-qr-placeholder]"),
-    code: modal.querySelector("[data-billing-pix-code]"),
-    status: modal.querySelector("[data-billing-pix-status]")
-  };
-}
-
 function updateBodyScrollLock() {
   const hasOpenModal = document.querySelector(".saas-modal-backdrop:not(.hidden)");
   document.body.classList.toggle("no-scroll", Boolean(hasOpenModal));
@@ -160,216 +135,6 @@ function closeClientDetailModal() {
 
   clientModal.classList.add("hidden");
   updateBodyScrollLock();
-}
-
-function clearBillingPixStatusInterval() {
-  if (billingPixStatusInterval) {
-    window.clearInterval(billingPixStatusInterval);
-    billingPixStatusInterval = null;
-  }
-}
-
-function closeBillingPixModal() {
-  const pixModal = getBillingPixModal();
-  clearBillingPixStatusInterval();
-
-  if (!pixModal) {
-    updateBodyScrollLock();
-    return;
-  }
-
-  pixModal.classList.add("hidden");
-  updateBodyScrollLock();
-}
-
-function resetBillingPixModal() {
-  const elements = getBillingPixElements();
-  if (!elements) {
-    return null;
-  }
-
-  clearBillingPixStatusInterval();
-  elements.modal.dataset.paymentId = "";
-  elements.modal.classList.remove("hidden");
-  elements.loading?.classList.remove("hidden");
-  elements.error?.classList.add("hidden");
-  elements.content?.classList.add("hidden");
-
-  if (elements.description) {
-    elements.description.textContent = "Gerando cobranca segura pelo PagBank.";
-  }
-  if (elements.error) {
-    elements.error.textContent = "";
-  }
-  if (elements.status) {
-    elements.status.textContent = "Aguardando pagamento.";
-  }
-  if (elements.code) {
-    elements.code.value = "";
-  }
-  if (elements.qrImage) {
-    elements.qrImage.removeAttribute("src");
-    elements.qrImage.classList.add("hidden");
-  }
-  if (elements.qrPlaceholder) {
-    elements.qrPlaceholder.classList.remove("hidden");
-  }
-
-  updateBodyScrollLock();
-  return elements;
-}
-
-function showBillingPixError(message) {
-  const elements = getBillingPixElements();
-  if (!elements) {
-    return;
-  }
-
-  elements.loading?.classList.add("hidden");
-  elements.content?.classList.add("hidden");
-  elements.error?.classList.remove("hidden");
-  if (elements.error) {
-    elements.error.textContent = message || "Nao foi possivel gerar o Pix.";
-  }
-}
-
-function isFinalPaymentStatus(status) {
-  return ["Pago", "Cancelada", "Vencida"].includes(String(status || ""));
-}
-
-function renderBillingPixPayment(payment) {
-  const elements = getBillingPixElements();
-  if (!elements || !payment) {
-    return;
-  }
-
-  elements.modal.dataset.paymentId = String(payment.id || "");
-  elements.loading?.classList.add("hidden");
-  elements.error?.classList.add("hidden");
-  elements.content?.classList.remove("hidden");
-
-  if (elements.description) {
-    elements.description.textContent = payment.description || "Fatura CitySorteios";
-  }
-  if (elements.amount) {
-    elements.amount.textContent = payment.amount || "--";
-  }
-  if (elements.code) {
-    elements.code.value = payment.pixCode || "";
-  }
-  if (elements.status) {
-    elements.status.textContent =
-      payment.status === "Pago"
-        ? "Pagamento confirmado."
-        : payment.status === "Cancelada"
-          ? "Pagamento cancelado."
-          : payment.status === "Vencida"
-            ? "Pix vencido. Gere uma nova cobranca."
-            : "Aguardando pagamento pelo PagBank.";
-  }
-
-  if (elements.qrImage && elements.qrPlaceholder) {
-    if (payment.qrCodeImageUrl) {
-      elements.qrImage.onload = () => {
-        elements.qrImage.classList.remove("hidden");
-        elements.qrPlaceholder.classList.add("hidden");
-      };
-      elements.qrImage.onerror = () => {
-        elements.qrImage.classList.add("hidden");
-        elements.qrPlaceholder.classList.remove("hidden");
-      };
-      elements.qrImage.src = payment.qrCodeImageUrl;
-    } else {
-      elements.qrImage.classList.add("hidden");
-      elements.qrPlaceholder.classList.remove("hidden");
-    }
-  }
-
-  if (isFinalPaymentStatus(payment.status)) {
-    clearBillingPixStatusInterval();
-  }
-}
-
-async function refreshBillingPixStatus(paymentId) {
-  if (!paymentId) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/dashboard/billing/pagbank/payments/${paymentId}`, {
-      headers: {
-        Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest"
-      }
-    });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || !payload?.ok) {
-      return;
-    }
-
-    renderBillingPixPayment(payload.payment);
-    if (payload.payment?.status === "Pago") {
-      window.setTimeout(() => {
-        navigateDashboard("/dashboard?tab=plano", false);
-      }, 1600);
-    }
-  } catch (error) {
-    const elements = getBillingPixElements();
-    if (elements?.status) {
-      elements.status.textContent = "Nao foi possivel verificar agora. O webhook tambem atualiza automaticamente.";
-    }
-  }
-}
-
-function startBillingPixStatusPolling(paymentId) {
-  clearBillingPixStatusInterval();
-  if (!paymentId) {
-    return;
-  }
-
-  billingPixStatusInterval = window.setInterval(() => {
-    refreshBillingPixStatus(paymentId);
-  }, 8000);
-}
-
-async function openBillingPixModal() {
-  const elements = resetBillingPixModal();
-  if (!elements) {
-    return;
-  }
-
-  try {
-    const response = await fetch("/dashboard/billing/pagbank/pix", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest"
-      }
-    });
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok || !payload?.ok) {
-      showBillingPixError(payload?.message || "Nao foi possivel gerar o Pix.");
-      return;
-    }
-
-    renderBillingPixPayment(payload.payment);
-    startBillingPixStatusPolling(payload.payment?.id);
-  } catch (error) {
-    showBillingPixError("Erro de conexao ao gerar o Pix.");
-  }
-}
-
-async function copyBillingPixCode() {
-  const elements = getBillingPixElements();
-  const copyButton = elements?.modal.querySelector("[data-copy-billing-pix]");
-  const code = elements?.code?.value || "";
-
-  if (!code || !copyButton) {
-    return;
-  }
-
-  await copyLinkToClipboard(code, copyButton);
 }
 
 function createClientDetailItem(title, meta, extra) {
@@ -1013,35 +778,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const openBillingPixButton = event.target.closest("[data-open-billing-pix]");
-  if (openBillingPixButton) {
-    event.preventDefault();
-    openBillingPixModal();
-    return;
-  }
-
-  const closeBillingPixButton = event.target.closest("#close-billing-pix-modal");
-  if (closeBillingPixButton) {
-    event.preventDefault();
-    closeBillingPixModal();
-    return;
-  }
-
-  const copyBillingPixButton = event.target.closest("[data-copy-billing-pix]");
-  if (copyBillingPixButton) {
-    event.preventDefault();
-    copyBillingPixCode();
-    return;
-  }
-
-  const refreshBillingPixButton = event.target.closest("[data-refresh-billing-pix]");
-  if (refreshBillingPixButton) {
-    event.preventDefault();
-    const pixModal = getBillingPixModal();
-    refreshBillingPixStatus(pixModal?.dataset.paymentId);
-    return;
-  }
-
   const clientRow = event.target.closest("[data-open-client-details]");
   if (clientRow) {
     event.preventDefault();
@@ -1070,12 +806,6 @@ document.addEventListener("click", (event) => {
   const clientModal = getClientDetailModal();
   if (clientModal && event.target === clientModal) {
     closeClientDetailModal();
-    return;
-  }
-
-  const billingPixModal = getBillingPixModal();
-  if (billingPixModal && event.target === billingPixModal) {
-    closeBillingPixModal();
     return;
   }
 

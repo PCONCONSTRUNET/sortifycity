@@ -251,6 +251,8 @@ function wantsJsonResponse(req) {
 
 function clearSessionCookie(res) {
   res.clearCookie("connect.sid", { path: "/" });
+  res.clearCookie("connect.sid", { path: "/", secure: true, sameSite: "none" });
+  res.clearCookie("connect.sid", { path: "/", secure: true, sameSite: "lax" });
 }
 
 function destroySessionAndRedirect(req, res, redirectPath) {

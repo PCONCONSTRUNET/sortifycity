@@ -163,6 +163,21 @@ function wantsJsonResponse(req) {
   return req.get("x-requested-with") === "XMLHttpRequest" || accept.includes("application/json");
 }
 
+function clearSessionCookie(res) {
+  res.clearCookie("connect.sid", { path: "/" });
+}
+
+function destroySessionAndRedirect(req, res, redirectPath) {
+  clearSessionCookie(res);
+  if (!req.session) {
+    return res.redirect(redirectPath);
+  }
+
+  return req.session.destroy(() => {
+    res.redirect(redirectPath);
+  });
+}
+
 function hasDeviceJoinedRaffle(req, publicToken) {
   if (!req.session || !req.session.publicRaffleEntries) {
     return false;
@@ -1723,6 +1738,13 @@ app.post("/webhooks/pagbank", async (req, res) => {
 
 app.get("/", async (req, res) => {
   if (req.session.user) {
+    const db = getDb();
+    const store = await db.get("SELECT id FROM stores WHERE id = ?", [req.session.user.id]);
+    if (!store) {
+      setFlash(req, "error", "Sessao expirada. Faca login novamente.");
+      return destroySessionAndRedirect(req, res, "/");
+    }
+
     return res.redirect("/dashboard");
   }
 
@@ -1746,6 +1768,12 @@ app.post("/", async (req, res) => {
   }
 
   if (req.session.user) {
+    const db = getDb();
+    const store = await db.get("SELECT id FROM stores WHERE id = ?", [req.session.user.id]);
+    if (!store) {
+      return destroySessionAndRedirect(req, res, "/");
+    }
+
     return res.redirect("/dashboard");
   }
 
@@ -1839,9 +1867,7 @@ async function handleLogin(req, res) {
 app.post("/login", handleLogin);
 
 app.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.redirect("/");
-  });
+  return destroySessionAndRedirect(req, res, "/");
 });
 
 function handleBillingReturn(req, res) {
@@ -1869,8 +1895,7 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
   );
 
   if (!store) {
-    req.session.destroy(() => {});
-    return res.redirect("/");
+    return destroySessionAndRedirect(req, res, "/");
   }
 
   req.session.user.storeName = store.store_name;
@@ -2067,8 +2092,7 @@ async function createPendingBillingPayment(db, context, method, referenceId) {
 async function handlePagBankCardCheckout(req, res) {
   const context = await getBillingContext(req);
   if (!context.store) {
-    req.session.destroy(() => {});
-    return res.redirect("/");
+    return destroySessionAndRedirect(req, res, "/");
   }
   if (context.error) {
     setFlash(req, "error", context.error);
@@ -2136,7 +2160,10 @@ app.post("/dashboard/billing/pagbank/card", ensureAuth, handlePagBankCardCheckou
 app.post("/dashboard/billing/pagbank/pix", ensureAuth, async (req, res) => {
   const context = await getBillingContext(req);
   if (!context.store) {
-    req.session.destroy(() => {});
+    clearSessionCookie(res);
+    if (req.session) {
+      req.session.destroy(() => {});
+    }
     return res.status(401).json({ ok: false, message: "Sessao expirada." });
   }
   if (context.error) {
@@ -2948,8 +2975,7 @@ app.post("/dashboard/settings/password", ensureAuth, async (req, res) => {
 
   const store = await db.get("SELECT password_hash FROM stores WHERE id = ?", [storeId]);
   if (!store) {
-    req.session.destroy(() => {});
-    return res.redirect("/");
+    return destroySessionAndRedirect(req, res, "/");
   }
 
   const passwordMatches = await bcrypt.compare(current_password, store.password_hash);

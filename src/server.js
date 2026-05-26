@@ -1688,7 +1688,7 @@ async function handleRegister(req, res) {
   await getStoreCustomization(db, result.lastID);
 
   setFlash(req, "success", "Cadastro realizado com sucesso.");
-  return res.redirect("/dashboard");
+  return req.session.save(() => res.redirect("/dashboard"));
 }
 
 app.post("/register", handleRegister);
@@ -1727,7 +1727,7 @@ async function handleLogin(req, res) {
   await getStoreCustomization(db, store.id);
 
   setFlash(req, "success", "Login realizado com sucesso.");
-  return res.redirect("/dashboard");
+  return req.session.save(() => res.redirect("/dashboard"));
 }
 
 app.post("/login", handleLogin);

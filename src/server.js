@@ -1823,6 +1823,17 @@ app.post("/logout", (req, res) => {
   });
 });
 
+function handleBillingReturn(req, res) {
+  return res.redirect(dashboardRedirect("plano"));
+}
+
+app.get("/dashboard/billing/pagbank/return", ensureAuth, handleBillingReturn);
+app.post("/dashboard/billing/pagbank/return", ensureAuth, handleBillingReturn);
+
+app.post("/dashboard", ensureAuth, (req, res) => {
+  return res.redirect(dashboardRedirect(req.query.tab || req.body?.tab || "plano"));
+});
+
 app.get("/dashboard", ensureAuth, async (req, res) => {
   const db = getDb();
   const activeTab = resolveDashboardTab(req.query.tab);
@@ -1991,7 +2002,7 @@ async function getBillingContext(req) {
   const description = `${plan.plan_name} - ${plan.invoiceNumber}`;
   const publicBaseUrl = getPublicBaseUrl(req);
   const webhookUrl = `${publicBaseUrl}/webhooks/pagbank`;
-  const returnUrl = `${publicBaseUrl}/dashboard?tab=plano`;
+  const returnUrl = `${publicBaseUrl}/dashboard/billing/pagbank/return`;
 
   return {
     db,

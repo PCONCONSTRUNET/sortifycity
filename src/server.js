@@ -54,6 +54,86 @@ fs.mkdirSync(RAFFLE_UPLOAD_DIR, { recursive: true });
 const app = express();
 const SQLiteStore = SQLiteStoreFactory(session);
 
+class DatabaseSessionStore extends session.Store {
+  constructor(options = {}) {
+    super();
+    this.ttlMs = options.ttlMs || 1000 * 60 * 60 * 8;
+  }
+
+  get(sid, callback) {
+    this.getSession(sid).then((sessionData) => callback(null, sessionData)).catch(callback);
+  }
+
+  set(sid, sessionData, callback = () => {}) {
+    this.saveSession(sid, sessionData).then(() => callback(null)).catch(callback);
+  }
+
+  touch(sid, sessionData, callback = () => {}) {
+    this.saveSession(sid, sessionData).then(() => callback(null)).catch(callback);
+  }
+
+  destroy(sid, callback = () => {}) {
+    getDb()
+      .run("DELETE FROM app_sessions WHERE sid = ?", [sid])
+      .then(() => callback(null))
+      .catch(callback);
+  }
+
+  async getSession(sid) {
+    const nowIso = new Date().toISOString();
+    const row = await getDb().get(
+      `
+        SELECT data
+        FROM app_sessions
+        WHERE sid = ?
+          AND (expires_at IS NULL OR expires_at > ?)
+        LIMIT 1
+      `,
+      [sid, nowIso]
+    );
+
+    if (!row) {
+      return null;
+    }
+
+    const sessionData = JSON.parse(row.data);
+    if (sessionData.cookie?.expires) {
+      sessionData.cookie.expires = new Date(sessionData.cookie.expires);
+    }
+
+    return sessionData;
+  }
+
+  async saveSession(sid, sessionData) {
+    const expiresAt = sessionData.cookie?.expires
+      ? new Date(sessionData.cookie.expires).toISOString()
+      : new Date(Date.now() + this.ttlMs).toISOString();
+
+    await getDb().run(
+      `
+        INSERT INTO app_sessions (sid, data, expires_at, updated_at)
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(sid) DO UPDATE SET
+          data = excluded.data,
+          expires_at = excluded.expires_at,
+          updated_at = datetime('now')
+      `,
+      [sid, JSON.stringify(sessionData), expiresAt]
+    );
+  }
+}
+
+function createSessionStore() {
+  if (process.env.VERCEL && (process.env.SUPABASE_DB_URL || process.env.DATABASE_URL)) {
+    return new DatabaseSessionStore();
+  }
+
+  return new SQLiteStore({
+    db: "sessions.sqlite",
+    dir: SESSION_DIR
+  });
+}
+
 const logoUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, callback) => {
@@ -122,10 +202,7 @@ app.use("/uploads", express.static(UPLOADS_DIR));
 
 app.use(
   session({
-    store: new SQLiteStore({
-      db: "sessions.sqlite",
-      dir: SESSION_DIR
-    }),
+    store: createSessionStore(),
     secret: process.env.SESSION_SECRET || "troque-essa-chave-em-producao",
     resave: false,
     saveUninitialized: false,

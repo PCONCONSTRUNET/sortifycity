@@ -220,6 +220,13 @@ function getSqliteSchemaSql() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      sid TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      expires_at TEXT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS platform_cities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       city_name TEXT NOT NULL,
@@ -341,6 +348,13 @@ function getPostgresSchemaSql() {
     CREATE TABLE IF NOT EXISTS app_settings (
       setting_key TEXT PRIMARY KEY,
       setting_value TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT (NOW()::text)
+    );
+
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      sid TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      expires_at TEXT NULL,
       updated_at TEXT NOT NULL DEFAULT (NOW()::text)
     );
 
@@ -491,6 +505,7 @@ async function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS idx_admin_payments_pagbank_reference ON admin_payments (pagbank_reference_id);
     CREATE INDEX IF NOT EXISTS idx_admin_payments_pagbank_order ON admin_payments (pagbank_order_id);
     CREATE INDEX IF NOT EXISTS idx_admin_plan_catalog_name ON admin_plan_catalog (plan_name);
+    CREATE INDEX IF NOT EXISTS idx_app_sessions_expires_at ON app_sessions (expires_at);
     CREATE INDEX IF NOT EXISTS idx_platform_cities_active_order ON platform_cities (is_active, sort_order);
   `);
 }

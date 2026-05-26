@@ -1,5 +1,14 @@
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const dotenv = require("dotenv");
+
+const PROJECT_ROOT = path.join(__dirname, "..");
+const envFiles = process.env.VERCEL
+  ? [path.join(PROJECT_ROOT, "config", "production.env"), path.join(PROJECT_ROOT, ".env")]
+  : [path.join(PROJECT_ROOT, ".env")];
+
+envFiles.forEach((envFile) => {
+  dotenv.config({ path: envFile, quiet: true });
+});
 
 const sqlite3 = require("sqlite3");
 const { open } = require("sqlite");

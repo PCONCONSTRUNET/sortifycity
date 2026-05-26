@@ -29,7 +29,12 @@ const ADMIN_PLAN_KEYS = ["iniciante", "luck"];
 const ADMIN_PLAN_STATUSES = ["Ativo", "Pendente", "Suspenso", "Cancelado", "Teste"];
 const ADMIN_INVOICE_STATUSES = ["Sem cobranca", "Pendente", "Pago", "Vencida", "Cancelada"];
 const ADMIN_PAYMENT_METHODS = ["Nao configurado", "PagBank", "Pix", "Cartao", "Boleto", "Dinheiro", "Transferencia"];
-const LOGO_UPLOAD_DIR = path.join(__dirname, "..", "public", "uploads", "logos");
+const SESSION_DIR = process.env.VERCEL ? "/tmp" : path.join(__dirname, "..");
+const UPLOADS_DIR = process.env.VERCEL
+  ? path.join("/tmp", "uploads")
+  : path.join(__dirname, "..", "public", "uploads");
+
+const LOGO_UPLOAD_DIR = path.join(UPLOADS_DIR, "logos");
 const LOGO_UPLOAD_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_LOGO_MIME_TYPES = new Set([
   "image/png",
@@ -38,10 +43,11 @@ const ALLOWED_LOGO_MIME_TYPES = new Set([
   "image/webp",
   "image/svg+xml"
 ]);
-const RAFFLE_UPLOAD_DIR = path.join(__dirname, "..", "public", "uploads", "raffles");
+const RAFFLE_UPLOAD_DIR = path.join(UPLOADS_DIR, "raffles");
 const RAFFLE_UPLOAD_MAX_SIZE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_RAFFLE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 fs.mkdirSync(LOGO_UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(RAFFLE_UPLOAD_DIR, { recursive: true });
 
@@ -112,12 +118,13 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "public")));
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 app.use(
   session({
     store: new SQLiteStore({
       db: "sessions.sqlite",
-      dir: path.join(__dirname, "..")
+      dir: SESSION_DIR
     }),
     secret: process.env.SESSION_SECRET || "troque-essa-chave-em-producao",
     resave: false,
@@ -2944,21 +2951,38 @@ async function runAutoDraw() {
   }
 }
 
-async function bootstrap() {
-  await initDb();
+let initPromise = null;
+async function ensureInitialized() {
+  if (initPromise) {
+    return initPromise;
+  }
 
-  app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
-  });
-
-  setInterval(() => {
-    runAutoDraw().catch((error) => {
-      console.error("Erro no auto sorteio:", error.message);
-    });
-  }, AUTO_DRAW_CHECK_INTERVAL_MS);
+  initPromise = initDb();
+  return initPromise;
 }
 
-bootstrap().catch((error) => {
-  console.error("Erro ao iniciar aplicacao:", error);
-  process.exit(1);
-});
+// Local dev/server mode
+if (require.main === module) {
+  ensureInitialized()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Servidor rodando em http://localhost:${PORT}`);
+      });
+
+      setInterval(() => {
+        runAutoDraw().catch((error) => {
+          console.error("Erro no auto sorteio:", error.message);
+        });
+      }, AUTO_DRAW_CHECK_INTERVAL_MS);
+    })
+    .catch((error) => {
+      console.error("Erro ao iniciar aplicacao:", error);
+      process.exit(1);
+    });
+}
+
+// Vercel serverless mode
+module.exports = {
+  app,
+  ensureInitialized
+};

@@ -495,8 +495,9 @@ async function initDb() {
     dbInstance = new PostgresDb(databaseUrl);
     await dbInstance.exec(getPostgresSchemaSql());
   } else {
+    const sqliteDir = process.env.VERCEL ? "/tmp" : path.join(__dirname, "..");
     dbInstance = await open({
-      filename: path.join(__dirname, "..", "data.sqlite"),
+      filename: path.join(sqliteDir, "data.sqlite"),
       driver: sqlite3.Database
     });
     dbInstance.dialect = "sqlite";

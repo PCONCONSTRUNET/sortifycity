@@ -1735,7 +1735,24 @@ app.get("/", async (req, res) => {
   });
 });
 
-app.post("/register", async (req, res) => {
+app.post("/", async (req, res) => {
+  const body = req.body || {};
+
+  if (body.email && body.password) {
+    if (body.store_name || body.cpf_cnpj || body.whatsapp) {
+      return handleRegister(req, res);
+    }
+    return handleLogin(req, res);
+  }
+
+  if (req.session.user) {
+    return res.redirect("/dashboard");
+  }
+
+  return res.redirect("/");
+});
+
+async function handleRegister(req, res) {
   const { store_name, email, cpf_cnpj, whatsapp, password } = req.body;
 
   if (!store_name || !email || !cpf_cnpj || !whatsapp || !password) {
@@ -1778,9 +1795,11 @@ app.post("/register", async (req, res) => {
 
   setFlash(req, "success", "Cadastro realizado com sucesso.");
   return res.redirect("/dashboard");
-});
+}
 
-app.post("/login", async (req, res) => {
+app.post("/register", handleRegister);
+
+async function handleLogin(req, res) {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -1815,7 +1834,9 @@ app.post("/login", async (req, res) => {
 
   setFlash(req, "success", "Login realizado com sucesso.");
   return res.redirect("/dashboard");
-});
+}
+
+app.post("/login", handleLogin);
 
 app.post("/logout", (req, res) => {
   req.session.destroy(() => {

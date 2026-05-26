@@ -191,6 +191,12 @@ const raffleImageUpload = multer({
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "..", "views"));
 
+// Necessario para o Vercel/proxies reversos: permite que o Express
+// reconheca o protocolo HTTPS e envie cookies seguros corretamente.
+if (process.env.VERCEL) {
+  app.set("trust proxy", 1);
+}
+
 app.use(express.json({
   verify: (req, _res, buffer) => {
     req.rawBody = buffer.toString("utf8");
@@ -209,7 +215,7 @@ app.use(
     cookie: {
       maxAge: 1000 * 60 * 60 * 8,
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: process.env.VERCEL ? "none" : "lax",
       secure: Boolean(process.env.VERCEL)
     }
   })
